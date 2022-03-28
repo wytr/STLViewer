@@ -149,7 +149,9 @@ class MyWindow(QMainWindow):
         """
         self.pitch = jsonObject["pitch"]
         self.roll = jsonObject["roll"]
+        
 
+        #this prevents catching the following exceptions should maybe be solved und mcu side.. dunno if possible
         if self.pitch and self.roll is not None:
             self.pitch_plot_values = self.pitch_plot_values[1:]
             self.roll_plot_values = self.roll_plot_values[1:]
