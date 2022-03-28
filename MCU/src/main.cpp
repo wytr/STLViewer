@@ -89,10 +89,10 @@ void setup(){
 }
 
 void loop() {
-  xyzFloat raw = myAcc.getRawValues();
+  //xyzFloat raw = myAcc.getRawValues();
   xyzFloat g = myAcc.getGValues();
-  xyzFloat angle = myAcc.getAngles();
-  xyzFloat corrAngles = myAcc.getCorrAngles();
+  //xyzFloat angle = myAcc.getAngles();
+  //xyzFloat corrAngles = myAcc.getCorrAngles();
   
 /* Still the uncorrected raw values!! */  
  /* Serial.print("Raw-x    = ");
@@ -112,14 +112,18 @@ void loop() {
 
   
   DynamicJsonDocument doc(1024);
-  String output;
+  String raw;
   doc["x-accel"] = g.x;
   doc["y-accel"] = g.y;
   doc["z-accel"] = g.z;
-  
-  serializeJson(doc, output);
+  doc["pitch"] = myAcc.getPitch();
+  doc["roll"] = myAcc.getRoll();
 
-  Serial.println(output);
+  serializeJson(doc, raw);
+  if(Serial.find('.')){
+    Serial.println(raw);
+  }
+  
 /* Angles use the corrected raws. Angles are simply calculated by
     angle = arcsin(g Value) */
   /*Serial.print("Angle x  = ");

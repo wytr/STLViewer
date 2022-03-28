@@ -44,26 +44,27 @@ class MyWindow(QMainWindow):
         self.viewer = gl.GLViewWidget()
         layout.addWidget(self.viewer, 1)
 
-        gx = gl.GLGridItem()
-        gx.setSize(200, 200)
-        gx.setSpacing(10, 10)
-        gx.rotate(90, 0, 1, 0)
-        gx.translate(-100, 0, 0)
+        self.gx = gl.GLGridItem()
+        self.gx.setSize(200, 200)
+        self.gx.setSpacing(10, 10)
+        self.gx.rotate(90, 0, 1, 0)
+        self.gx.translate(-100, 0, 0)
+        self.gx.color()
 
-        gy = gl.GLGridItem()
-        gy.setSize(200, 200)
-        gy.setSpacing(10, 10)
-        gy.rotate(90, 1, 0, 0)
-        gy.translate(0, -100, 0)
+        self.gy = gl.GLGridItem()
+        self.gy.setSize(200, 200)
+        self.gy.setSpacing(10, 10)
+        self.gy.rotate(90, 1, 0, 0)
+        self.gy.translate(0, -100, 0)
 
-        gz = gl.GLGridItem()
-        gz.setSize(200, 200)
-        gz.setSpacing(10, 10)
-        gz.translate(0, 0, -100)
+        self.gz = gl.GLGridItem()
+        self.gz.setSize(200, 200)
+        self.gz.setSpacing(10, 10)
+        self.gz.translate(0, 0, -100)
 
-        self.viewer.addItem(gx)
-        self.viewer.addItem(gy)
-        self.viewer.addItem(gz)
+        self.viewer.addItem(self.gx)
+        self.viewer.addItem(self.gy)
+        self.viewer.addItem(self.gz)
         
         self.pitch = 0
         self.roll = 0
@@ -75,7 +76,7 @@ class MyWindow(QMainWindow):
         layout.addWidget(btn)
 
         self.graphWidget = pg.PlotWidget()
-        self.graphWidget.setYRange(-90, 90)
+        self.graphWidget.setYRange(-180, 180)
         p1 = self.graphWidget.getPlotItem()
         p1.hideAxis('bottom')
 
@@ -132,30 +133,58 @@ class MyWindow(QMainWindow):
 
     def update_plot_data(self):
 
-        ser_bytes = ser.readline()
-        decoded_bytes = ser_bytes[0:len(ser_bytes)-2].decode("utf-8")
+        #send '.' to get response (jsonobject)
+        message = '.'
+        messate_bytes = message.encode()
+        ser.write(messate_bytes)
+        response =  ser.readline()
+        decoded_bytes = response[0:len(response)-2].decode("utf-8")
         jsonObject = json.loads(decoded_bytes)
-
+        print(decoded_bytes)
+        """
         self.pitch = self.calc_angle(
             jsonObject["x-accel"], jsonObject["y-accel"], jsonObject["z-accel"], True)
         self.roll = self.calc_angle(
             jsonObject["x-accel"], jsonObject["y-accel"], jsonObject["z-accel"], False)
+        """
+        self.pitch = jsonObject["pitch"]
+        self.roll = jsonObject["roll"]
 
-        self.pitch_plot_values = self.pitch_plot_values[1:]
-        self.roll_plot_values = self.roll_plot_values[1:]
+        if self.pitch and self.roll is not None:
+            self.pitch_plot_values = self.pitch_plot_values[1:]
+            self.roll_plot_values = self.roll_plot_values[1:]
 
-        self.pitch_plot_values.append(self.pitch)
-        self.roll_plot_values.append(self.roll)
-        
-        self.xAccel_data_line.setData(self.xAxis, self.pitch_plot_values)
-        self.yAccel_data_line.setData(self.xAxis, self.roll_plot_values)
-        
-        if self.currentSTL:
-            self.currentSTL.resetTransform()
-            self.currentSTL.rotate(self.pitch,1,0,0)
-            self.currentSTL.rotate(self.roll,0,1,0)
-            self.currentSTL.rotate(0,0,0,1)
+            if self.pitch > 45 or self.roll > 45 or self.pitch < -45 or self.roll < -45:
+                self.gx.setColor((120, 0, 0))
+                self.gy.setColor((120, 0, 0))
+                self.gz.setColor((120, 0, 0))
+            else:
+                self.gx.setColor((100, 100, 100))
+                self.gy.setColor((100, 100, 100))
+                self.gz.setColor((100, 100, 100))
             
+            #lowpassfilered (TODO: Add checkbox in gui to enable lowpassfiltering)
+            self.pitch_plot_values.append(0.80 *self.pitch_plot_values[-1] + 0.20 * self.pitch)
+            self.roll_plot_values.append(0.80 *self.roll_plot_values[-1] + 0.20 * self.roll)
+            try:
+                self.xAccel_data_line.setData(self.xAxis, self.pitch_plot_values)
+                self.yAccel_data_line.setData(self.xAxis, self.roll_plot_values)
+            except:
+                print("Error - MCU sendin NULL --> needs further investigation1")
+                
+            try:
+                if self.currentSTL:
+                    self.currentSTL.resetTransform()
+
+                    #lowpassfilered
+                    self.currentSTL.rotate(0.95 *self.pitch_plot_values[-1] + 0.05 * self.pitch,1,0,0)
+                    self.currentSTL.rotate(0.95 *self.roll_plot_values[-1] + 0.05 * self.roll,0,1,0)
+                    #self.currentSTL.rotate(self.pitch,1,0,0)
+                    #self.currentSTL.rotate(self.roll,0,1,0)
+                    #self.currentSTL.rotate(0,0,0,1)
+            
+            except:
+                print("Error - MCU sendin NULL --> needs further investigation2")
 
     def calc_angle(self, x, y, z, pitch):
         # else return roll
