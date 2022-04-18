@@ -1,21 +1,26 @@
 from random import randint
 from pyqtgraph.Qt import QtCore, QtGui
+import sys
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+import OpenGL.GL as GL
+
+from PIL import Image
 import serial
 import math
 import json
-from OpenGL.GL import *
-from OpenGL.GL import shaders
+import pywavefront
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *  
+from PyQt5.QtGui import *
+from PyQt5.QtOpenGL import *  
 
 import numpy as np
 from stl import mesh
-
 from pathlib import Path
+
+
 
 ser = serial.Serial('COM3')
 ser.baudrate = 115200
@@ -140,7 +145,7 @@ class MyWindow(QMainWindow):
         response =  ser.readline()
         decoded_bytes = response[0:len(response)-2].decode("utf-8")
         jsonObject = json.loads(decoded_bytes)
-        print(decoded_bytes)
+        #print(decoded_bytes)
         """
         self.pitch = self.calc_angle(
             jsonObject["x-accel"], jsonObject["y-accel"], jsonObject["z-accel"], True)
@@ -204,7 +209,7 @@ class MyWindow(QMainWindow):
             self.currentSTL.rotate(self.slider_y.value(),0,1,0)
             self.currentSTL.rotate(self.slider_z.value(),0,0,1)
         """
-        print(self.time.toString("hh:mm:ss"))
+        #print(self.time.toString("hh:mm:ss"))
 
     def clicked(self):
         if self.currentSTL:
@@ -219,39 +224,70 @@ class MyWindow(QMainWindow):
         if fname[0]:
             self.showSTL(fname[0])
             self.lastDir = Path(fname[0]).parent
-            
+
+
     def showSTL(self, filename):
         if self.currentSTL:
             self.viewer.removeItem(self.currentSTL)
 
         points, faces = self.loadSTL(filename)
-        meshdata = gl.MeshData(vertexes=points, faces=faces)
-        mesh = gl.GLMeshItem(meshdata=meshdata, smooth=True, drawFaces=False, drawEdges=True, edgeColor=(0, 1, 0, 1))
-        #mesh.setShader()
-        self.viewer.addItem(mesh)
+        # scene = pywavefront.Wavefront("meshes/defaultCube.obj", strict=True, encoding="iso-8859-1", parse=False)
+        scene = pywavefront.Wavefront("meshes/chibi.obj", strict=False, create_materials=True, collect_faces=True)#, cache=True) # Cache is currently not working?!
+
+         # Conversion - Pywavefront to PyQtGraph GLMeshItem
+        vertices_array = np.asarray(scene.vertices)
+        faces_array = []
+        for mesh_lists in scene.mesh_list:
+            for faces in mesh_lists.faces:
+                faces_array.append(np.array([faces[0],faces[1],faces[2]]))
+        faces_array = np.asarray(faces_array)
+
+        #defaultCube_indices, defaultCube_buffer = ObjLoader.load_model("meshes/defaultCube.obj", True)
         
+        print(points)
+        print(faces)
+        #mesh = gl.GLMeshItem(vertexes=scene.vertices, drawFaces=False, drawEdges=True, smooth=True)
+        # load image
+        image = Image.open("meshes/chibi.png")
+        image = image.transpose(Image.FLIP_TOP_BOTTOM)
+        img_data = image.convert("RGBA").tobytes()
+        
+        meshdata = gl.MeshData(vertexes=vertices_array, faces=faces_array)
+        mesh = gl.GLMeshItem(meshdata=meshdata, smooth=True, drawFaces=True, drawEdges=False, shader='myShader', glOptions='textured')
+        mesh.shader()['c'] = np.array([1,0,0,1])
+        mesh.shader()['tex'] = GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, img_data)
+
+        # mesh['u_texture'] = GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, img_data)
+
+        #tex = self.read_texture("meshes/chibi.obj")
+        #GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, img_data
+        #texture = GL.glGenTextures(1)
+        # mesh.setGLOptions({
+        #         'glTexImage2D': (GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.width, image.height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, img_data),
+        #         'glBindTexture': (GL.GL_TEXTURE_2D, texture)
+        #     })
+        # mesh.update()
+        self.viewer.addItem(mesh)
         self.currentSTL = mesh
-        #self.currentSTL.rotate(20,1,0,0)
 
     def loadSTL(self, filename):
-
 
         m = mesh.Mesh.from_file(filename)
         shape = m.points.shape
         points = m.points.reshape(-1, 3)
         faces = np.arange(points.shape[0]).reshape(-1, 3)
         return points, faces
-
+    
     def dragEnterEvent(self, e):
         print("enter")
         mimeData = e.mimeData()
         mimeList = mimeData.formats()
         filename = None
-        
+       
         if "text/uri-list" in mimeList:
             filename = mimeData.data("text/uri-list")
-            filename = str(filename, encoding="utf-8")
-            filename = filename.replace("file:///", "").replace("\r\n", "").replace("%20", " ")
+            filename = str(filename, encoding="utf-9")
+            filename = filename.replace("file:///", "").replace("\r\n", "").replace("%19", " ")
             filename = Path(filename)
             
         if filename.exists() and filename.suffix == ".stl":
@@ -265,8 +301,38 @@ class MyWindow(QMainWindow):
         if self.droppedFilename:
             self.showSTL(self.droppedFilename)
 
+class glWidget(QGLWidget):
+    def __init__(self, parent=None):
+        QGLWidget.__init__(self, parent)
+        self.setMinimumSize(640, 480)
+
+    def paintGL(self):
+        GL.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        GL.glLoadIdentity()
+        GL.glTranslatef(-2.5, 0.5, -6.0)
+        GL.glColor3f( 1.0, 1.5, 0.0 );
+        GL.glPolygonMode(GL_FRONT, GL_FILL);
+        GL.glBegin(GL_TRIANGLES)
+        GL.glVertex3f(2.0,-1.2,0.0)
+        GL.glVertex3f(2.6,0.0,0.0)
+        GL.glVertex3f(2.9,-1.2,0.0)
+        GL.glEnd()
+        GL.glFlush()
+
+    def initializeGL(self):
+        GL.glClearDepth(1.0)              
+        GL.glDepthFunc(GL_LESS)
+        GL.glEnable(GL_DEPTH_TEST)
+        GL.glShadeModel(GL_SMOOTH)
+        GL.glMatrixMode(GL_PROJECTION)
+        GL.glLoadIdentity()                    
+        GL.gluPerspective(45.0,1.33,0.1, 100.0) 
+        GL.glMatrixMode(GL_MODELVIEW)
+
+
+
 if __name__ == '__main__':
-    app = QtGui.QApplication([])
+    app = QApplication([])
     window = MyWindow()
     window.show()
     app.exec_()
