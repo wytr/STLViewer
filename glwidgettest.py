@@ -1,6 +1,5 @@
 
 import sys
-from turtle import width
 from OpenGL.GLU import *
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
@@ -17,10 +16,10 @@ class Ui_MainWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(Ui_MainWindow, self).__init__()
         self.openGlWidget = glWidget()
-        self.button = QtWidgets.QPushButton('Test', self)
+        #self.button = QtWidgets.QPushButton('Test', self)
         mainLayout = QtWidgets.QHBoxLayout()
         mainLayout.addWidget(self.openGlWidget)
-        mainLayout.addWidget(self.button)
+        #mainLayout.addWidget(self.button)
         self.setLayout(mainLayout)
           
     def keyPressEvent(self, event):
@@ -105,9 +104,9 @@ class glWidget(QGLWidget):
         """
 
         self.first_mouse = True
-        self.WIDTH, self.HEIGHT = 1280, 720
+        self.width, self.height = 1280, 720
         QGLWidget.__init__(self, parent)
-        self.setMinimumSize(self.WIDTH, self.HEIGHT)
+        self.setMinimumSize(self.width, self.height)
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
         self.setMouseTracking(True)
         
@@ -139,7 +138,7 @@ class glWidget(QGLWidget):
 
         self.cam = Camera()
 
-        self.lastX, self.lastY = self.WIDTH / 2, self.HEIGHT / 2
+        self.lastX, self.lastY = self.width / 2, self.height / 2
         self.first_mouse = True
         self.left, self.right, self.forward, self.backward = False, False, False, False
 
@@ -157,21 +156,22 @@ class glWidget(QGLWidget):
         if self.backward:
             self.cam.process_keyboard("BACKWARD", 0.05)
 
-        #self.leaveEvent = lambda event: print("left!")
-
+    def refreshViewport(self):
+            if self.initdone:
+                glViewport(0, 0, self.width, self.height)
+                projection = pyrr.matrix44.create_perspective_projection_matrix(45, self.width / self.height, 0.1, 100)
+                glUniformMatrix4fv(self.proj_loc, 1, GL_FALSE, projection)
+                 
     def resizeEvent(self, event):
         
         QtWidgets.QWidget.resizeEvent(self, event)
         print("RESIZE")
-        #print(f"width: {self.frameGeometry().width()}")
-        #print(f"heigth: {self.frameGeometry().height()}")
-        width = self.frameGeometry().width()
-        height = self.frameGeometry().height()
-        """
-        glViewport(0, 0, width, height)
-        projection = pyrr.matrix44.create_perspective_projection_matrix(45, width / height, 0.1, 100)
-        glUniformMatrix4fv(self.proj_loc, 1, GL_FALSE, projection)
-        """
+        self.width = self.frameGeometry().width()
+        self.height = self.frameGeometry().height()
+        print(self.width)
+        print(self.height)
+        self.refreshViewport()
+        
 
     def mouseMoveEvent(self, event):
         
@@ -195,6 +195,7 @@ class glWidget(QGLWidget):
     def paintGL(self):
         
         self.do_movement()
+
         if self.initdone:
 
             self.time = self.time.addMSecs(1)
@@ -212,12 +213,12 @@ class glWidget(QGLWidget):
             glBindTexture(GL_TEXTURE_2D, self.textures[0])
             glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
             glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                # draw the monkey
+            """# draw the monkey
             glBindVertexArray(self.VAO[1])
             glBindTexture(GL_TEXTURE_2D, self.textures[1])
             glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, self.monkey_pos)
             glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-            
+            """
             # draw the floor
             glBindVertexArray(self.VAO[2])
             glBindTexture(GL_TEXTURE_2D, self.textures[2])
@@ -290,7 +291,7 @@ class glWidget(QGLWidget):
         
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        self.projection = pyrr.matrix44.create_perspective_projection_matrix(45, self.WIDTH / self.HEIGHT, 0.1, 100)
+        self.projection = pyrr.matrix44.create_perspective_projection_matrix(120, self.width / self.height, 0.1, 1000)
         self.cube_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, 4, -2]))
         self.monkey_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([-4, 4, -4]))
         self.floor_pos = pyrr.matrix44.create_from_translation(pyrr.Vector3([0, 0, 0]))
@@ -299,6 +300,7 @@ class glWidget(QGLWidget):
         self.view_loc = glGetUniformLocation(self.shader, "view")
         glUniformMatrix4fv(self.proj_loc, 1, GL_FALSE, self.projection)
         self.initdone = True
+        self.refreshViewport()
 
 
 if __name__ == '__main__':   
