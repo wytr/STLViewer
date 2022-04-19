@@ -1,30 +1,22 @@
-import sys
+from PyQt5.QtWidgets import QApplication, QOpenGLWidget
+from OpenGL import GL as gl
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QApplication
 
-
-class Example(QWidget):
-
-    def __init__(self):
-        super().__init__()
-
-        self.initUI()
-
-    def initUI(self):
-        self.setGeometry(300, 300, 250, 150)
-        self.setWindowTitle('Event handler')
-        self.show()
-
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key_Escape:
-            self.close()
-
+class Widget(QOpenGLWidget):
+    def initializeGL(self):
+        gl.glClearColor(0.5, 0.8, 0.7, 1.0)
+    def resizeGL(self, w, h):
+        gl.glViewport(0, 0, w, h)
+    def paintGL(self):
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 def main():
-    app = QApplication(sys.argv)
-    ex = Example()
-    sys.exit(app.exec_())
+    QApplication.setAttribute(Qt.AA_UseDesktopOpenGL)
+    app = QApplication([])
+    widget = Widget()
+    widget.setWindowTitle("Minimal PyQt5 and OpenGL Example")
+    widget.resize(400, 400)
+    widget.show()
+    app.exec_()
 
-
-if __name__ == '__main__':
-    main()
+main()
