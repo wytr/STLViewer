@@ -12,6 +12,7 @@ from ObjLoader import ObjLoader
 from camera import Camera
 
 timeNow = 0
+timeNowTwo = 0
 
 
 class Ui_MainWindow(QtWidgets.QWidget):
@@ -122,6 +123,7 @@ class glWidget(QGLWidget):
             "meshes/floor.obj")
         self.frames = 0
         self.fpscap = 60
+        self.deltaFrameTime = 1/self.fpscap
         self.textures = None
         self.useFrameCap = True
         self.shader = None
@@ -201,6 +203,7 @@ class glWidget(QGLWidget):
 
     def paintGL(self):
         global timeNow
+        global timeNowTwo
         self.do_movement()
         if self.initdone:
 
@@ -209,34 +212,39 @@ class glWidget(QGLWidget):
                 print(self.frames)
                 self.frames = 0
 
-            self.time = self.time.addMSecs(1)
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            if self.useFrameCap == True:
+                if(pytime.time() >= timeNowTwo + self.deltaFrameTime):
+                    timeNowTwo += self.deltaFrameTime
 
-            view = self.cam.get_view_matrix()
+                    self.time = self.time.addMSecs(1)
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-            glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
-            time = float(self.time.toString("s.zzz"))
-            rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
+                    view = self.cam.get_view_matrix()
 
-            model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
-            # draw the cube
-            glBindVertexArray(self.VAO[0])
-            glBindTexture(GL_TEXTURE_2D, self.textures[0])
-            glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
-            glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-            """# draw the monkey
-                glBindVertexArray(self.VAO[1])
-                glBindTexture(GL_TEXTURE_2D, self.textures[1])
-                glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, self.monkey_pos)
-                glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                """
-            # draw the floor
-            glBindVertexArray(self.VAO[2])
-            glBindTexture(GL_TEXTURE_2D, self.textures[2])
-            glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, self.floor_pos)
-            glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
-            self.update()
-            self.frames += 1
+                    glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
+                    time = float(self.time.toString("s.zzz"))
+                    rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
+
+                    model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
+                    # draw the cube
+                    glBindVertexArray(self.VAO[0])
+                    glBindTexture(GL_TEXTURE_2D, self.textures[0])
+                    glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
+                    glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
+                    """# draw the monkey
+                        glBindVertexArray(self.VAO[1])
+                        glBindTexture(GL_TEXTURE_2D, self.textures[1])
+                        glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, self.monkey_pos)
+                        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
+                        """
+                    # draw the floor
+                    glBindVertexArray(self.VAO[2])
+                    glBindTexture(GL_TEXTURE_2D, self.textures[2])
+                    glUniformMatrix4fv(self.model_loc, 1,
+                                       GL_FALSE, self.floor_pos)
+                    glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
+                    self.update()
+                    self.frames += 1
 
     def initializeGL(self):
         global initdone
@@ -331,6 +339,8 @@ class glWidget(QGLWidget):
         self.refreshViewport()
         global timeNow
         timeNow = pytime.time()
+        global timeNowTwo
+        timeNowTwo = timeNow
 
 
 if __name__ == '__main__':
