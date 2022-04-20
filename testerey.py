@@ -1,22 +1,38 @@
-from PyQt5.QtWidgets import QApplication, QOpenGLWidget
-from OpenGL import GL as gl
+import sys
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QWidget, QLCDNumber, QSlider,
+                             QVBoxLayout, QApplication)
 
-class Widget(QOpenGLWidget):
-    def initializeGL(self):
-        gl.glClearColor(0.5, 0.8, 0.7, 1.0)
-    def resizeGL(self, w, h):
-        gl.glViewport(0, 0, w, h)
-    def paintGL(self):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+class Example(QWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+
+        lcd = QLCDNumber(self)
+        sld = QSlider(Qt.Horizontal, self)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(lcd)
+        vbox.addWidget(sld)
+
+        self.setLayout(vbox)
+        sld.valueChanged.connect(lcd.display)
+
+        self.setGeometry(300, 300, 250, 150)
+        self.setWindowTitle('Signal and slot')
+        self.show()
+
 
 def main():
-    QApplication.setAttribute(Qt.AA_UseDesktopOpenGL)
-    app = QApplication([])
-    widget = Widget()
-    widget.setWindowTitle("Minimal PyQt5 and OpenGL Example")
-    widget.resize(400, 400)
-    widget.show()
-    app.exec_()
+    app = QApplication(sys.argv)
+    ex = Example()
+    sys.exit(app.exec_())
 
-main()
+
+if __name__ == '__main__':
+    main()
