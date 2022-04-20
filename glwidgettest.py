@@ -1,8 +1,14 @@
 import sys
 import time as pytime
+
+import numpy as np
+import freetype
+import glm
+
 from OpenGL.GLU import *
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
+
 from TextureLoader import load_texture
 from PyQt5 import QtGui
 from PyQt5.QtOpenGL import *
@@ -14,6 +20,8 @@ from camera import Camera
 timeNow = 0
 timeNowTwo = 0
 
+fontfile = "Vera.ttf"
+
 
 class Ui_MainWindow(QtWidgets.QWidget):
 
@@ -24,13 +32,14 @@ class Ui_MainWindow(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.mainLayout.addWidget(self.openGlWidget)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.mainLayout.addWidget(self.button)
+        # self.mainLayout.addWidget(self.button)
         self.setLayout(self.mainLayout)
 
         self.framecounter = QtWidgets.QLabel(self.openGlWidget)
         self.framecounter.setText("9999")
         self.framecounter.setFont(QtGui.QFont('Arial', 20))
         self.framecounter.setStyleSheet("background-color: red")
+
         self.openGlWidget.my_signal.connect(self.updateFramecounter)
 
     def updateFramecounter(self, fps):
@@ -128,8 +137,9 @@ class glWidget(QGLWidget):
             "meshes/monkey.obj")
         self.floor_indices, self.floor_buffer = ObjLoader.load_model(
             "meshes/floor.obj")
+
         self.frames = 0
-        self.fpscap = 60
+        self.fpscap = 48
         self.deltaFrameTime = 1/self.fpscap
         self.textures = None
         self.useFrameCap = True
@@ -209,79 +219,58 @@ class glWidget(QGLWidget):
 
         global timeNow
         global timeNowTwo
+        # TODO: implement framecounter rendering in opengl with  (best performance option)
         self.do_movement()
         if self.initdone:
 
-            if(pytime.time() >= timeNow + 1):
-                timeNow += 1
+            if(pytime.time() >= timeNow + 0.5):
+                timeNow += 0.5
                 # print(self.frames * 2)
-                self.my_signal.emit(self.frames * 1)
+                self.my_signal.emit(self.frames * 2.0)
                 self.frames = 0
 
             if self.useFrameCap == True:
+
                 if(pytime.time() >= timeNowTwo + self.deltaFrameTime):
                     timeNowTwo += self.deltaFrameTime
 
-                    self.time = self.time.addMSecs(1)
-                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+                    self.glStuff()
+            else:
+                self.glStuff()
 
-                    view = self.cam.get_view_matrix()
+        #TODO: Mutlithreading
 
-                    glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
-                    time = float(self.time.toString("s.zzz"))
-                    rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
+    def glStuff(self):
+        self.time = self.time.addMSecs(1)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-                    model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
-                    # draw the cube
-                    glBindVertexArray(self.VAO[0])
-                    glBindTexture(GL_TEXTURE_2D, self.textures[0])
-                    glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
-                    glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                    """# draw the monkey
-                        glBindVertexArray(self.VAO[1])
-                        glBindTexture(GL_TEXTURE_2D, self.textures[1])
-                        glUniformMatrix4fv(
-                            self.model_loc, 1, GL_FALSE, self.monkey_pos)
-                        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                        """
-                    # draw the floor
-                    glBindVertexArray(self.VAO[2])
-                    glBindTexture(GL_TEXTURE_2D, self.textures[2])
-                    glUniformMatrix4fv(self.model_loc, 1,
-                                       GL_FALSE, self.floor_pos)
-                    glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
-                    self.update()
-                    self.frames += 1
-                else:
-                    self.time = self.time.addMSecs(1)
-                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        view = self.cam.get_view_matrix()
 
-                    view = self.cam.get_view_matrix()
+        glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
+        time = float(self.time.toString("s.zzz"))
+        rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
 
-                    glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
-                    time = float(self.time.toString("s.zzz"))
-                    rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
+        model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
+        # draw the cube
+        glBindVertexArray(self.VAO[0])
+        glBindTexture(GL_TEXTURE_2D, self.textures[0])
+        glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
+        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
+        # draw the monkey
+        glBindVertexArray(self.VAO[1])
+        glBindTexture(GL_TEXTURE_2D, self.textures[1])
+        glUniformMatrix4fv(self.model_loc, 1,
+                           GL_FALSE, self.monkey_pos)
+        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
 
-                    model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
-                    # draw the cube
-                    glBindVertexArray(self.VAO[0])
-                    glBindTexture(GL_TEXTURE_2D, self.textures[0])
-                    glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
-                    glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                    """# draw the monkey
-                        glBindVertexArray(self.VAO[1])
-                        glBindTexture(GL_TEXTURE_2D, self.textures[1])
-                        glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, self.monkey_pos)
-                        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-                        """
-                    # draw the floor
-                    glBindVertexArray(self.VAO[2])
-                    glBindTexture(GL_TEXTURE_2D, self.textures[2])
-                    glUniformMatrix4fv(self.model_loc, 1,
-                                       GL_FALSE, self.floor_pos)
-                    glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
-                    self.update()
-                    self.frames += 1
+        # draw the floor
+        glBindVertexArray(self.VAO[2])
+        glBindTexture(GL_TEXTURE_2D, self.textures[2])
+        glUniformMatrix4fv(self.model_loc, 1,
+                           GL_FALSE, self.floor_pos)
+        glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
+        self.update()
+        self.frames += 1
 
     def initializeGL(self):
         global initdone
