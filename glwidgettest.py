@@ -226,7 +226,7 @@ class glWidget(QGLWidget):
             if(pytime.time() >= timeNow + 0.5):
                 timeNow += 0.5
                 # print(self.frames * 2)
-                self.my_signal.emit(self.frames * 2.0)
+                self.my_signal.emit(self.frames * 2)
                 self.frames = 0
 
             if self.useFrameCap == True:
