@@ -3,7 +3,7 @@ import time as pytime
 
 import numpy as np
 import freetype
-import glm
+#import glm
 
 from OpenGL.GLU import *
 from OpenGL.GL import *
@@ -32,7 +32,7 @@ class Ui_MainWindow(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.mainLayout.addWidget(self.openGlWidget)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        # self.mainLayout.addWidget(self.button)
+        self.mainLayout.addWidget(self.button)
         self.setLayout(self.mainLayout)
 
         self.framecounter = QtWidgets.QLabel(self.openGlWidget)
@@ -139,7 +139,7 @@ class glWidget(QGLWidget):
             "meshes/floor.obj")
 
         self.frames = 0
-        self.fpscap = 48
+        self.fpscap = 60
         self.deltaFrameTime = 1/self.fpscap
         self.textures = None
         self.useFrameCap = True

@@ -17,7 +17,7 @@ from stl import mesh
 
 from pathlib import Path
 
-ser = serial.Serial('COM3')
+ser = serial.Serial('COM4')
 ser.baudrate = 115200
 
 class MyWindow(QMainWindow):
