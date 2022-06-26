@@ -28,19 +28,20 @@ class Ui_MainWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(Ui_MainWindow, self).__init__()
         self.openGlWidget = glWidget()
+        self.setWindowTitle("openGL")
         self.button = QtWidgets.QPushButton('Test', self)
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.mainLayout.addWidget(self.openGlWidget)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.mainLayout.addWidget(self.button)
+        #self.mainLayout.addWidget(self.button)
         self.setLayout(self.mainLayout)
 
-        self.framecounter = QtWidgets.QLabel(self.openGlWidget)
-        self.framecounter.setText("9999")
-        self.framecounter.setFont(QtGui.QFont('Arial', 20))
-        self.framecounter.setStyleSheet("background-color: red")
+        #self.framecounter = QtWidgets.QLabel(self.openGlWidget)
+        #self.framecounter.setText("9999")
+        #self.framecounter.setFont(QtGui.QFont('Arial', 20))
+        #self.framecounter.setStyleSheet("background-color: red")
 
-        self.openGlWidget.my_signal.connect(self.updateFramecounter)
+        #self.openGlWidget.my_signal.connect(self.updateFramecounter)
 
     def updateFramecounter(self, fps):
         self.framecounter.setText(str(fps))
@@ -52,17 +53,16 @@ class Ui_MainWindow(QtWidgets.QWidget):
             self.close()
         elif key == QtCore.Qt.Key.Key_W:
             self.openGlWidget.forward = True
-            # print('W PRESSED')
         elif key == QtCore.Qt.Key.Key_A:
             self.openGlWidget.left = True
-            # print('A PRESSED')
         elif key == QtCore.Qt.Key.Key_S:
             self.openGlWidget.backward = True
-            # print('S PRESSED')
         elif key == QtCore.Qt.Key.Key_D:
             self.openGlWidget.right = True
-
-            # print('D PRESSED')
+        elif key == QtCore.Qt.Key.Key_PageUp:
+            self.openGlWidget.up = True
+        elif key == QtCore.Qt.Key.Key_PageDown:
+            self.openGlWidget.down = True
 
     def keyReleaseEvent(self, event):
         key = event.key()
@@ -83,6 +83,13 @@ class Ui_MainWindow(QtWidgets.QWidget):
             # print('D RELEASED')
             self.openGlWidget.right = False
 
+        elif key == QtCore.Qt.Key.Key_PageUp and not event.isAutoRepeat():
+            # print('S RELEASED')
+            self.openGlWidget.up = False
+
+        elif key == QtCore.Qt.Key.Key_PageDown and not event.isAutoRepeat():
+            # print('D RELEASED')
+            self.openGlWidget.down = False
 
 class glWidget(QGLWidget):
 
@@ -126,13 +133,13 @@ class glWidget(QGLWidget):
         """
 
         self.first_mouse = True
-        self.width, self.height = 1280, 720
+        self.width, self.height = 1200, 400
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(self.width, self.height)
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
-        self.setMouseTracking(True)
+        self.setMouseTracking(False)
         self.cube_indices, self.cube_buffer = ObjLoader.load_model(
-            "meshes/cube.obj")
+            "meshes/zaehler1.obj")
         self.monkey_indices, self.monkey_buffer = ObjLoader.load_model(
             "meshes/monkey.obj")
         self.floor_indices, self.floor_buffer = ObjLoader.load_model(
@@ -167,20 +174,24 @@ class glWidget(QGLWidget):
 
         self.lastX, self.lastY = self.width / 2, self.height / 2
         self.first_mouse = True
-        self.left, self.right, self.forward, self.backward = False, False, False, False
+        self.up, self.down, self.left, self.right, self.forward, self.backward = False, False, False, False, False, False
 
     def set_first_mouse(self, b):
         self.first_mouse = b
 
     def do_movement(self):
         if self.left:
-            self.cam.process_keyboard("LEFT", 0.025)
+            self.cam.process_keyboard("LEFT", 0.01)
         if self.right:
-            self.cam.process_keyboard("RIGHT", 0.025)
+            self.cam.process_keyboard("RIGHT", 0.01)
         if self.forward:
-            self.cam.process_keyboard("FORWARD", 0.025)
+            self.cam.process_keyboard("FORWARD", 0.01)
         if self.backward:
-            self.cam.process_keyboard("BACKWARD", 0.025)
+            self.cam.process_keyboard("BACKWARD", 0.01)
+        if self.up:
+            self.cam.process_keyboard("UP", 0.01)
+        if self.down:
+            self.cam.process_keyboard("DOWN", 0.01)
 
     def refreshViewport(self):
         if self.initdone:
@@ -247,31 +258,34 @@ class glWidget(QGLWidget):
         view = self.cam.get_view_matrix()
 
         glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
-        time = float(self.time.toString("s.zzz"))
-        rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
 
+        time = float(self.time.toString("s.zzz"))
+        #rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
+        rot_y = pyrr.Matrix44.from_y_rotation(0)
         model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
+        floor_rot = pyrr.Matrix44.from_x_rotation(0.314)
+        model_2 = pyrr.matrix44.multiply(floor_rot, self.floor_pos)
+
         # draw the cube
         glBindVertexArray(self.VAO[0])
         glBindTexture(GL_TEXTURE_2D, self.textures[0])
         glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model)
-        glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
+        glDrawArrays(GL_TRIANGLES, 0, len(self.cube_indices))
+        """
         # draw the monkey
         glBindVertexArray(self.VAO[1])
         glBindTexture(GL_TEXTURE_2D, self.textures[1])
-        glUniformMatrix4fv(self.model_loc, 1,
-                           GL_FALSE, self.monkey_pos)
+        glUniformMatrix4fv(self.model_loc, 1,GL_FALSE, self.monkey_pos)
         glDrawArrays(GL_TRIANGLES, 0, len(self.monkey_indices))
-
         # draw the floor
         glBindVertexArray(self.VAO[2])
         glBindTexture(GL_TEXTURE_2D, self.textures[2])
-        glUniformMatrix4fv(self.model_loc, 1,
-                           GL_FALSE, self.floor_pos)
+        glUniformMatrix4fv(self.model_loc, 1,GL_FALSE, model_e2)
         glDrawArrays(GL_TRIANGLES, 0, len(self.floor_indices))
+        """
         self.update()
         self.frames += 1
-
+        
     def initializeGL(self):
         global initdone
         global vertex_src
@@ -281,7 +295,7 @@ class glWidget(QGLWidget):
             self.vertex_src, GL_VERTEX_SHADER), compileShader(self.fragment_src, GL_FRAGMENT_SHADER))
 
         self.textures = glGenTextures(3)
-        load_texture("meshes/crate.png", self.textures[0])
+        load_texture("meshes/zaehler.png", self.textures[0])
         load_texture("meshes/monkey.jpg", self.textures[1])
         load_texture("meshes/floor2.jpg", self.textures[2])
 
@@ -344,7 +358,7 @@ class glWidget(QGLWidget):
         glEnableVertexAttribArray(2)
 
         glUseProgram(self.shader)
-        glClearColor(0.1, 0.1, 0.1, 1)
+        glClearColor(1.0, 1.0, 1.0, 1)
         glEnable(GL_DEPTH_TEST)
 
         glEnable(GL_BLEND)

@@ -50,7 +50,10 @@ class Camera:
             self.camera_pos -= self.camera_right * velocity
         if direction == "RIGHT":
             self.camera_pos += self.camera_right * velocity
-
+        if direction == "UP":
+            self.camera_pos += self.camera_up * velocity
+        if direction == "DOWN":
+            self.camera_pos -= self.camera_up * velocity
 
 
 
