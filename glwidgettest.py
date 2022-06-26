@@ -10,9 +10,11 @@ from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 
 from TextureLoader import load_texture
+
 from PyQt5 import QtGui
 from PyQt5.QtOpenGL import *
 from PyQt5 import QtCore, QtWidgets, QtOpenGL
+
 import pyrr
 from ObjLoader import ObjLoader
 from camera import Camera
@@ -26,25 +28,41 @@ fontfile = "Vera.ttf"
 class Ui_MainWindow(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
+        
         super(Ui_MainWindow, self).__init__()
+        self.width, self.height = 720, 240
+        self.devMode = False
         self.openGlWidget = glWidget()
         self.setWindowTitle("openGL")
+        self.slider_speed = QtWidgets.QSlider(QtCore.Qt.Vertical)
+        self.slider_speed.setMinimum(0)
+        self.slider_speed.setMaximum(100)
+        self.slider_speed.setValue(0)
+        self.slider_speed.setTickInterval(1)
+        
+        self.slider_speed.hide()
+
         self.button = QtWidgets.QPushButton('Test', self)
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.mainLayout.addWidget(self.openGlWidget)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        #self.mainLayout.addWidget(self.button)
+        self.mainLayout.addWidget(self.slider_speed)
         self.setLayout(self.mainLayout)
+        
+        self.framecounter = QtWidgets.QLabel(self.openGlWidget)
+        self.framecounter.setText("99")
+        self.framecounter.setFont(QtGui.QFont('Arial', 10))
+        self.framecounter.setStyleSheet("background-color: white")
 
-        #self.framecounter = QtWidgets.QLabel(self.openGlWidget)
-        #self.framecounter.setText("9999")
-        #self.framecounter.setFont(QtGui.QFont('Arial', 20))
-        #self.framecounter.setStyleSheet("background-color: red")
+        self.openGlWidget.frameCounterUpdateSignal.connect(self.updateFramecounter)
+        self.slider_speed.valueChanged.connect(self.speed_value_changed)
 
-        #self.openGlWidget.my_signal.connect(self.updateFramecounter)
+    def speed_value_changed(self):
+        self.openGlWidget.set_rotation_speed(self.slider_speed.value())
 
     def updateFramecounter(self, fps):
         self.framecounter.setText(str(fps))
+        
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -63,6 +81,15 @@ class Ui_MainWindow(QtWidgets.QWidget):
             self.openGlWidget.up = True
         elif key == QtCore.Qt.Key.Key_PageDown:
             self.openGlWidget.down = True
+        elif key == QtCore.Qt.Key.Key_F1:
+
+            if (self.slider_speed.isHidden()):
+                self.slider_speed.show()
+                self.devMode = True
+            else:
+                self.slider_speed.hide()
+                self.devMode = False
+                self.setBaseSize(self.width, self.height)
 
     def keyReleaseEvent(self, event):
         key = event.key()
@@ -93,10 +120,11 @@ class Ui_MainWindow(QtWidgets.QWidget):
 
 class glWidget(QGLWidget):
 
-    my_signal = QtCore.pyqtSignal(int)
-
+    frameCounterUpdateSignal = QtCore.pyqtSignal(int)
+    
     def __init__(self, parent=None):
         self.initdone = False
+        self.rotationSpeed = 0
         self.vertex_src = """
         # version 330
 
@@ -133,7 +161,7 @@ class glWidget(QGLWidget):
         """
 
         self.first_mouse = True
-        self.width, self.height = 1200, 400
+        self.width, self.height = 720, 240
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(self.width, self.height)
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
@@ -146,7 +174,7 @@ class glWidget(QGLWidget):
             "meshes/floor.obj")
 
         self.frames = 0
-        self.fpscap = 60
+        self.fpscap = 30
         self.deltaFrameTime = 1/self.fpscap
         self.textures = None
         self.useFrameCap = True
@@ -175,6 +203,9 @@ class glWidget(QGLWidget):
         self.lastX, self.lastY = self.width / 2, self.height / 2
         self.first_mouse = True
         self.up, self.down, self.left, self.right, self.forward, self.backward = False, False, False, False, False, False
+
+    def set_rotation_speed(self, value):
+        self.rotationSpeed = value
 
     def set_first_mouse(self, b):
         self.first_mouse = b
@@ -237,7 +268,7 @@ class glWidget(QGLWidget):
             if(pytime.time() >= timeNow + 0.5):
                 timeNow += 0.5
                 # print(self.frames * 2)
-                self.my_signal.emit(self.frames * 2)
+                self.frameCounterUpdateSignal.emit(self.frames * 2)
                 self.frames = 0
 
             if self.useFrameCap == True:
@@ -260,8 +291,8 @@ class glWidget(QGLWidget):
         glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, view)
 
         time = float(self.time.toString("s.zzz"))
-        #rot_y = pyrr.Matrix44.from_y_rotation(0.8 * time)
-        rot_y = pyrr.Matrix44.from_y_rotation(0)
+        rot_y = pyrr.Matrix44.from_y_rotation(self.rotationSpeed * time)
+        #rot_y = pyrr.Matrix44.from_y_rotation(0)
         model = pyrr.matrix44.multiply(rot_y, self.cube_pos)
         floor_rot = pyrr.Matrix44.from_x_rotation(0.314)
         model_2 = pyrr.matrix44.multiply(floor_rot, self.floor_pos)
@@ -366,7 +397,7 @@ class glWidget(QGLWidget):
         self.projection = pyrr.matrix44.create_perspective_projection_matrix(
             120, self.width / self.height, 0.1, 1000)
         self.cube_pos = pyrr.matrix44.create_from_translation(
-            pyrr.Vector3([0, 4, -2]))
+            pyrr.Vector3([-1, 5, 4]))
         self.monkey_pos = pyrr.matrix44.create_from_translation(
             pyrr.Vector3([-4, 4, -4]))
         self.floor_pos = pyrr.matrix44.create_from_translation(

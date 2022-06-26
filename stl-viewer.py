@@ -100,7 +100,7 @@ class MyWindow(QMainWindow):
         self.viewer.setWindowTitle('STL Accelerometer Viewer')
         self.viewer.setCameraPosition(distance=40)
         
-        """
+        
         self.slider_x = QSlider(Qt.Horizontal)
         self.slider_x.setMinimum(-180)
         self.slider_x.setMaximum(180)
@@ -108,7 +108,7 @@ class MyWindow(QMainWindow):
         self.slider_x.setTickPosition(QSlider.TicksBelow)
         self.slider_x.setTickInterval(1)
         layout.addWidget(self.slider_x)
-
+        """
         self.slider_y = QSlider(Qt.Horizontal)
         self.slider_y.setMinimum(-180)
         self.slider_y.setMaximum(180)
